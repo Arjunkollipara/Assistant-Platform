@@ -1,0 +1,14 @@
+# File: infra/github-actions/ci-placeholder.yml
+# Purpose: Starter CI workflow template for future promotion to .github/workflows.
+
+name: scaffold-placeholder-ci
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scaffold-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain purpose
+        run: echo "This is a template workflow. Move to .github/workflows when CI is enabled."
