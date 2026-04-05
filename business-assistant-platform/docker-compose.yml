@@ -125,6 +125,8 @@ services:
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: ${MLFLOW_EXPERIMENT_NAME}
+      GIT_PYTHON_REFRESH: ${GIT_PYTHON_REFRESH}
       MINIO_HOST: minio
       MINIO_API_PORT: 9000
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -133,6 +135,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       MINIO_BUCKET_RAW: ${MINIO_BUCKET_RAW}
       MINIO_BUCKET_PROCESSED: ${MINIO_BUCKET_PROCESSED}
+      MINIO_BUCKET_MODELS: ${MINIO_BUCKET_MODELS}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     # Use baked image code by default for portability across host OS setups.
@@ -177,6 +180,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: ${MLFLOW_EXPERIMENT_NAME}
+      GIT_PYTHON_REFRESH: ${GIT_PYTHON_REFRESH}
       MINIO_HOST: minio
       MINIO_API_PORT: 9000
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -185,6 +191,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       MINIO_BUCKET_RAW: ${MINIO_BUCKET_RAW}
       MINIO_BUCKET_PROCESSED: ${MINIO_BUCKET_PROCESSED}
+      MINIO_BUCKET_MODELS: ${MINIO_BUCKET_MODELS}
     command: celery -A backend.core.celery_app.celery_app worker --loglevel=INFO --pool=solo --concurrency=1
     depends_on:
       postgres:

@@ -23,6 +23,15 @@ The backend is organized by responsibility so each platform layer can be develop
 4. Mongo persistence for unstructured chunks.
 5. MinIO storage for raw and processed artifacts.
 
+## Current Layer 2 Implementation
+
+1. Async model-training API with Celery orchestration.
+2. Training pipelines with scikit-learn and XGBoost.
+3. MLflow experiment tracking for parameters, metrics, and model artifacts.
+4. MinIO model-bundle storage for prediction serving.
+5. Batch prediction API using trained `model_id`.
+6. Model-vs-actual evaluation API and visualization dashboard for validation.
+
 ## Quick File Map
 
 1. `api/main.py`: API bootstrap and route mounting.

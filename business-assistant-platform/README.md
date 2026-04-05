@@ -56,8 +56,8 @@ The scaffold Compose environment starts these services:
 4. `qdrant`: vector search store for RAG embeddings.
 5. `minio`: local S3-compatible store (drop-in for Azure Blob patterns).
 6. `mlflow`: experiment tracking server.
-7. `backend`: placeholder FastAPI service for health checks and integration wiring.
-8. `celery_worker`: asynchronous Layer 1 ingestion task processor.
+7. `backend`: FastAPI service for Layer 1 and Layer 2 APIs.
+8. `celery_worker`: asynchronous worker for ingestion and model-training jobs.
 
 ## Quick Start
 
@@ -113,6 +113,62 @@ Layer 1 now supports asynchronous ingestion for `csv`, `pdf`, and `docx`.
 2. PostgreSQL stores ingestion jobs and processed document metadata.
 3. MongoDB stores normalized text chunks for future RAG indexing.
 
+## Layer 2 (Implemented)
+
+Layer 2 now supports asynchronous model training and batch prediction from completed CSV ingestion jobs.
+
+### Endpoints
+
+1. `POST /api/v1/ml/train`: create async model-training job.
+2. `GET /api/v1/ml/jobs/{training_job_id}`: inspect training status and metrics.
+3. `POST /api/v1/ml/predict`: run prediction using trained `model_id`.
+4. `POST /api/v1/ml/evaluate`: compare predicted vs actual on a CSV ingestion job.
+5. `GET /layer2/dashboard`: open the visual validation webpage.
+
+### Example Local Test
+
+1. Start training job:
+
+   ```bash
+   curl -X POST "http://localhost:8000/api/v1/ml/train" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "ingestion_job_id": "<completed_ingestion_job_id>",
+       "target_column": "churned",
+       "task_type": "auto",
+       "algorithm": "xgboost"
+     }'
+   ```
+
+2. Check status:
+
+   ```bash
+   curl "http://localhost:8000/api/v1/ml/jobs/<training_job_id>"
+   ```
+
+3. Predict:
+
+   ```bash
+   curl -X POST "http://localhost:8000/api/v1/ml/predict" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "model_id": "<model_id>",
+       "rows": [
+         {"customer_id": 2001, "monthly_revenue": 11000, "last_contact_days": 8}
+       ]
+     }'
+   ```
+
+4. Visual validation dashboard:
+
+   Visit `http://localhost:8000/layer2/dashboard` in your browser.
+
+### Layer 2 Data Persistence
+
+1. PostgreSQL stores training-job state and model metadata (`ml_training_jobs`).
+2. MinIO stores serialized trained model bundles.
+3. MLflow stores training parameters and metrics for experiment tracking.
+
 ## Technology Choices (Local First, Azure Ready)
 
 - **FastAPI**: typed Python APIs, async support, and clear OpenAPI docs.
@@ -127,5 +183,5 @@ Layer 1 now supports asynchronous ingestion for `csv`, `pdf`, and `docx`.
 ## Development Notes
 
 - Credentials are environment-variable driven only; no hardcoded secrets.
-- This scaffold intentionally starts with placeholder implementations so each layer can be built incrementally and verified.
-- Next step after scaffold verification: implement **Layer 1 ingestion pipeline** end-to-end.
+- Layers are implemented incrementally and verified before moving forward.
+- Next step: implement **Layer 3 GenAI & Agentic Layer** on top of ingested and modeled data.

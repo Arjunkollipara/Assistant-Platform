@@ -11,9 +11,9 @@ The `core` package contains shared infrastructure primitives consumed by API rou
 
 1. `config.py`: typed environment configuration used across the backend.
 2. `db.py`: SQLAlchemy engine, session management, and DB initialization helper.
-3. `models.py`: ORM models for ingestion jobs and processed documents.
+3. `models.py`: ORM models for ingestion jobs, processed documents, and ML training jobs.
 4. `mongo.py`: Mongo client and collection helpers for chunk persistence.
-5. `storage.py`: MinIO utility functions for raw and processed artifacts.
+5. `storage.py`: MinIO utility functions for raw, processed, and model artifacts.
 6. `celery_app.py`: Celery broker/backend configuration and task discovery.
 7. `__init__.py`: package marker.
 

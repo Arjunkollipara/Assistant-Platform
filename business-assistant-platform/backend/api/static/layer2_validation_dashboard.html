@@ -1,0 +1,562 @@
+<!--
+File: backend/api/static/layer2_validation_dashboard.html
+Purpose: Browser-based Layer 2 validation dashboard for actual-vs-predicted model checks.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Layer 2 Validation Dashboard</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --primary: #0f766e;
+        --secondary: #0369a1;
+        --actual: #2563eb;
+        --predicted: #ea580c;
+        --ok: #16a34a;
+        --error: #dc2626;
+        --border: #dbe1eb;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: radial-gradient(circle at top right, #dce8f6 0, #f5f7fb 45%);
+        color: var(--text);
+        font-family: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 16px 48px;
+      }
+
+      .title {
+        margin: 0 0 8px;
+        font-size: 30px;
+        color: var(--primary);
+      }
+
+      .subtitle {
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 10px 20px rgb(15 23 42 / 5%);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .field label {
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .field input {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+
+      .actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .btn {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 700;
+        background: var(--secondary);
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 10px;
+        font-size: 14px;
+      }
+
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .status.error {
+        color: var(--error);
+      }
+
+      .metric-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .metric-key {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric-value {
+        margin-top: 4px;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .bar-row {
+        margin-bottom: 14px;
+      }
+
+      .bar-label {
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      .bar-track {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .bar {
+        height: 14px;
+        border-radius: 999px;
+      }
+
+      .bar.actual {
+        background: var(--actual);
+      }
+
+      .bar.predicted {
+        background: var(--predicted);
+      }
+
+      .bar-value {
+        width: 50px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .legend {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 12px;
+        font-size: 13px;
+      }
+
+      .legend span::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+
+      .legend .actual::before {
+        background: var(--actual);
+      }
+
+      .legend .predicted::before {
+        background: var(--predicted);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 8px;
+        text-align: center;
+        font-size: 13px;
+      }
+
+      th {
+        background: #f8fafc;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      #scatterSvg {
+        width: 100%;
+        height: 340px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      @media (max-width: 700px) {
+        .title {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <h1 class="title">Layer 2 Validation Dashboard</h1>
+      <p class="subtitle">
+        Validate model quality by comparing predicted values against actual labels from a completed CSV ingestion job.
+      </p>
+
+      <section class="card">
+        <div class="grid">
+          <div class="field">
+            <label for="modelId">Model ID</label>
+            <input id="modelId" placeholder="e.g. dce4cc22-e46a-40c5-927e-9af4ab7c29ea" />
+          </div>
+          <div class="field">
+            <label for="ingestionJobId">Ingestion Job ID</label>
+            <input id="ingestionJobId" placeholder="e.g. 47df30b9-54bc-4eeb-b89f-9547c7d19643" />
+          </div>
+          <div class="field">
+            <label for="targetColumn">Target Column (Optional)</label>
+            <input id="targetColumn" placeholder="Leave blank to use training target column" />
+          </div>
+          <div class="field">
+            <label for="maxRows">Max Preview Rows</label>
+            <input id="maxRows" type="number" min="1" max="10000" value="200" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="evaluateBtn" class="btn">Evaluate Model</button>
+        </div>
+        <div id="status" class="status muted">
+          Tip: Use IDs returned by `POST /api/v1/ml/train` and `POST /api/v1/ingestion/upload`.
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Metrics</h3>
+        <div id="metricsGrid" class="grid"></div>
+      </section>
+
+      <section id="classificationSection" class="hidden">
+        <section class="card">
+          <h3>Actual vs Predicted Counts</h3>
+          <div class="legend">
+            <span class="actual">Actual</span>
+            <span class="predicted">Predicted</span>
+          </div>
+          <div id="classificationBars"></div>
+        </section>
+
+        <section class="card">
+          <h3>Confusion Matrix</h3>
+          <div id="confusionMatrix"></div>
+        </section>
+      </section>
+
+      <section id="regressionSection" class="hidden">
+        <section class="card">
+          <h3>Regression Scatter (Actual vs Predicted)</h3>
+          <svg id="scatterSvg" viewBox="0 0 900 340" preserveAspectRatio="none"></svg>
+        </section>
+      </section>
+
+      <section class="card">
+        <h3>Preview Rows</h3>
+        <div id="previewTable"></div>
+      </section>
+    </main>
+
+    <script>
+      const evaluateBtn = document.getElementById("evaluateBtn");
+      const statusEl = document.getElementById("status");
+      const metricsGrid = document.getElementById("metricsGrid");
+      const classificationSection = document.getElementById("classificationSection");
+      const regressionSection = document.getElementById("regressionSection");
+      const classificationBars = document.getElementById("classificationBars");
+      const confusionMatrixEl = document.getElementById("confusionMatrix");
+      const previewTableEl = document.getElementById("previewTable");
+      const scatterSvg = document.getElementById("scatterSvg");
+
+      evaluateBtn.addEventListener("click", runEvaluation);
+
+      async function runEvaluation() {
+        const modelId = document.getElementById("modelId").value.trim();
+        const ingestionJobId = document.getElementById("ingestionJobId").value.trim();
+        const targetColumn = document.getElementById("targetColumn").value.trim();
+        const maxRows = Number(document.getElementById("maxRows").value || "200");
+
+        if (!modelId || !ingestionJobId) {
+          setStatus("Model ID and Ingestion Job ID are required.", "error");
+          return;
+        }
+
+        const payload = {
+          model_id: modelId,
+          ingestion_job_id: ingestionJobId,
+          max_rows: maxRows,
+        };
+        if (targetColumn) {
+          payload.target_column = targetColumn;
+        }
+
+        evaluateBtn.disabled = true;
+        setStatus("Evaluating model...", "muted");
+
+        try {
+          const response = await fetch("/api/v1/ml/evaluate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Evaluation failed.");
+          }
+          renderEvaluation(data);
+          setStatus(
+            `Evaluation complete. Task type: ${data.task_type}. Rows evaluated: ${data.row_count}.`,
+            "ok"
+          );
+        } catch (error) {
+          clearVisuals();
+          setStatus(`Evaluation failed: ${error.message}`, "error");
+        } finally {
+          evaluateBtn.disabled = false;
+        }
+      }
+
+      function renderEvaluation(data) {
+        clearVisuals();
+        renderMetrics(data.metrics_json, data);
+        renderPreviewRows(data.preview_rows || []);
+
+        if (data.task_type === "classification") {
+          classificationSection.classList.remove("hidden");
+          renderClassificationBars(data.actual_counts || {}, data.predicted_counts || {});
+          renderConfusionMatrix(data.confusion_labels || [], data.confusion_matrix || []);
+          return;
+        }
+
+        regressionSection.classList.remove("hidden");
+        renderRegressionScatter(data.regression_points || []);
+      }
+
+      function renderMetrics(metrics, data) {
+        const items = Object.entries(metrics || {});
+        items.unshift(["row_count", data.row_count]);
+        items.unshift(["algorithm", data.algorithm]);
+        items.unshift(["task_type", data.task_type]);
+
+        metricsGrid.innerHTML = items
+          .map(([key, value]) => {
+            const formatted = typeof value === "number" ? value.toFixed(4) : String(value);
+            return `
+              <div class="metric-card">
+                <div class="metric-key">${escapeHtml(key)}</div>
+                <div class="metric-value">${escapeHtml(formatted)}</div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderClassificationBars(actualCounts, predictedCounts) {
+        const labels = Array.from(
+          new Set([...Object.keys(actualCounts), ...Object.keys(predictedCounts)])
+        ).sort();
+        if (!labels.length) {
+          classificationBars.innerHTML = `<p class="muted">No class-count data available.</p>`;
+          return;
+        }
+
+        const maxCount = Math.max(
+          ...labels.map((label) => Math.max(actualCounts[label] || 0, predictedCounts[label] || 0)),
+          1
+        );
+
+        classificationBars.innerHTML = labels
+          .map((label) => {
+            const actual = actualCounts[label] || 0;
+            const predicted = predictedCounts[label] || 0;
+            const actualWidth = (actual / maxCount) * 100;
+            const predictedWidth = (predicted / maxCount) * 100;
+            return `
+              <div class="bar-row">
+                <div class="bar-label">${escapeHtml(label)}</div>
+                <div class="bar-track">
+                  <div class="bar actual" style="width: ${actualWidth}%"></div>
+                  <span class="bar-value">${actual}</span>
+                </div>
+                <div class="bar-track" style="margin-top: 6px">
+                  <div class="bar predicted" style="width: ${predictedWidth}%"></div>
+                  <span class="bar-value">${predicted}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderConfusionMatrix(labels, matrix) {
+        if (!labels.length || !matrix.length) {
+          confusionMatrixEl.innerHTML = `<p class="muted">No confusion matrix data available.</p>`;
+          return;
+        }
+
+        const headerCells = labels.map((label) => `<th>${escapeHtml(label)}</th>`).join("");
+        const bodyRows = matrix
+          .map((row, index) => {
+            const rowCells = row.map((value) => `<td>${value}</td>`).join("");
+            return `<tr><th>${escapeHtml(labels[index])}</th>${rowCells}</tr>`;
+          })
+          .join("");
+
+        confusionMatrixEl.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Actual \\ Predicted</th>
+                ${headerCells}
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+            </tbody>
+          </table>
+        `;
+      }
+
+      function renderRegressionScatter(points) {
+        if (!points.length) {
+          scatterSvg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="#475569">No regression points available.</text>`;
+          return;
+        }
+
+        const chartMargin = { left: 60, right: 20, top: 20, bottom: 40 };
+        const width = 900 - chartMargin.left - chartMargin.right;
+        const height = 340 - chartMargin.top - chartMargin.bottom;
+
+        const actualValues = points.map((point) => point.actual);
+        const predictedValues = points.map((point) => point.predicted);
+        const allValues = [...actualValues, ...predictedValues];
+        const minValue = Math.min(...allValues);
+        const maxValue = Math.max(...allValues);
+        const range = Math.max(maxValue - minValue, 1e-9);
+
+        const scale = (value) => (value - minValue) / range;
+        const toX = (value) => chartMargin.left + scale(value) * width;
+        const toY = (value) => chartMargin.top + (1 - scale(value)) * height;
+
+        const circles = points
+          .slice(0, 1500)
+          .map((point) => {
+            const cx = toX(point.actual);
+            const cy = toY(point.predicted);
+            return `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="3" fill="#0369a1" opacity="0.75" />`;
+          })
+          .join("");
+
+        const x1 = toX(minValue);
+        const y1 = toY(minValue);
+        const x2 = toX(maxValue);
+        const y2 = toY(maxValue);
+
+        scatterSvg.innerHTML = `
+          <line x1="${chartMargin.left}" y1="${chartMargin.top + height}" x2="${chartMargin.left + width}" y2="${chartMargin.top + height}" stroke="#94a3b8" />
+          <line x1="${chartMargin.left}" y1="${chartMargin.top}" x2="${chartMargin.left}" y2="${chartMargin.top + height}" stroke="#94a3b8" />
+          <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ef4444" stroke-dasharray="6 4" />
+          ${circles}
+          <text x="${chartMargin.left + width / 2}" y="334" text-anchor="middle" fill="#475569" font-size="12">Actual</text>
+          <text x="14" y="${chartMargin.top + height / 2}" text-anchor="middle" fill="#475569" font-size="12" transform="rotate(-90, 14, ${chartMargin.top + height / 2})">Predicted</text>
+          <text x="${chartMargin.left}" y="14" fill="#475569" font-size="11">Min: ${minValue.toFixed(3)}</text>
+          <text x="${chartMargin.left + width - 120}" y="14" fill="#475569" font-size="11">Max: ${maxValue.toFixed(3)}</text>
+        `;
+      }
+
+      function renderPreviewRows(rows) {
+        if (!rows.length) {
+          previewTableEl.innerHTML = `<p class="muted">No preview rows returned.</p>`;
+          return;
+        }
+
+        const headers = Object.keys(rows[0]);
+        const headerHtml = headers.map((key) => `<th>${escapeHtml(key)}</th>`).join("");
+        const bodyHtml = rows
+          .slice(0, 200)
+          .map((row) => {
+            const cells = headers
+              .map((key) => `<td>${escapeHtml(String(row[key]))}</td>`)
+              .join("");
+            return `<tr>${cells}</tr>`;
+          })
+          .join("");
+
+        previewTableEl.innerHTML = `
+          <table>
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${bodyHtml}</tbody>
+          </table>
+        `;
+      }
+
+      function clearVisuals() {
+        classificationSection.classList.add("hidden");
+        regressionSection.classList.add("hidden");
+        classificationBars.innerHTML = "";
+        confusionMatrixEl.innerHTML = "";
+        scatterSvg.innerHTML = "";
+        previewTableEl.innerHTML = "";
+        metricsGrid.innerHTML = "";
+      }
+
+      function setStatus(message, type) {
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+      }
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+    </script>
+  </body>
+</html>
